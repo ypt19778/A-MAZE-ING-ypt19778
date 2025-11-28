@@ -11,9 +11,13 @@ function Player:new(maze)
 
         width = 10,
         height = 10,
+        hand_sprite = love.graphics.newImage('sprites/hand.png'),
+        hand_x = nil,
+        hand_y = nil,
 
         rotation = 0,
-        rotationSpeed = 1.3,
+        rotationSpeed = 0.7,
+        mouseSensitivity = 0.002,
         rotationCos = nil,
         rotationSin = nil,
         rotationAngle = nil,
@@ -48,6 +52,7 @@ function Player:move(dt)
 	self.lastX = self.x; self.lastY = self.y
     self.rotationCos = math.cos(self.rotation)
     self.rotationSin = math.sin(self.rotation)
+    self.rotationAngle = math.atan2(self.y, self.x)
 
 	self.vector.x, self.vector.y = 0, 0
 	if love.keyboard.isDown('w') then 
@@ -79,14 +84,21 @@ function Player:move(dt)
     if love.keyboard.isDown('right') then self.rotation = self.rotation + self.rotationSpeed * dt end
 end
 
+function Player:rotateWithMouse(dx)
+    self.rotation = self.rotation + dx * self.mouseSensitivity
+end
+
 function Player:update(dt)
     self:move(dt)
     self:checkCollisions()
 end
 
 function Player:draw()
+    ---[[
     love.graphics.rectangle('fill', self.x, self.y, self.width, self.height)
     love.graphics.line(self.x + self.width / 2, self.y + self.height / 2, self.x + (self.rotationCos * 30), self.y + (self.rotationSin * 30))
+    --]]
+    love.graphics.draw(self.hand_sprite, window_width / 2 + (window_width / 6) - self.hand_sprite:getHeight() / 3, window_height / 2.2, nil, window_height / 38)
 end
 
 return Player

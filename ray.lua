@@ -4,7 +4,8 @@ function Ray:cast(settings, dt)
     dt = dt or 0
     
     local ray = {
-        maze = settings.maze,
+        player = settings.player,
+        maze = settings.player.maze,
         
         x = settings.x,
         y = settings.y,
@@ -17,11 +18,13 @@ function Ray:cast(settings, dt)
         height = 1,
         distance = nil,
         collided = false,
+        wallSide = nil, -- 'vertical' or 'horizontal'
         
         speed = settings.speed,
 
         cos = settings.cos,
         sin = settings.sin,
+        angle = settings.angle,
         vector = {
             x = settings.cos * settings.speed,
             y = settings.sin * settings.speed
@@ -35,6 +38,8 @@ function Ray:cast(settings, dt)
     
     while not ray.collided and loops < maxLoops do
         loops = loops + 1
+        local prevX = ray.x
+        local prevY = ray.y
         ray.x = ray.x + ray.vector.x * dt
         ray.y = ray.y + ray.vector.y * dt
         
@@ -55,6 +60,57 @@ function Ray:cast(settings, dt)
                     local cell = ray.maze.grid[index_row][index_cell]
                     if cell then
                         if collide and collide(ray, cell) then
+                            local hitVertical = false
+                            local minT = math.huge
+                            
+                            if ray.vector.x ~= 0 then
+                                -- Left edge
+                                local t = (cell.x - prevX) / ray.vector.x
+                                if t > 0 and t < minT then
+                                    local yIntersect = prevY + ray.vector.y * t
+                                    if yIntersect >= cell.y and yIntersect <= cell.y + cell.height then
+                                        minT = t
+                                        hitVertical = true
+                                    end
+                                end
+                                
+                                -- Right edge
+                                t = (cell.x + cell.width - prevX) / ray.vector.x
+                                if t > 0 and t < minT then
+                                    local yIntersect = prevY + ray.vector.y * t
+                                    if yIntersect >= cell.y and yIntersect <= cell.y + cell.height then
+                                        minT = t
+                                        hitVertical = true
+                                    end
+                                end
+                            end
+
+                            if ray.vector.y ~= 0 then
+                                local t = (cell.y - prevY) / ray.vector.y
+                                if t > 0 and t < minT then
+                                    local xIntersect = prevX + ray.vector.x * t
+                                    if xIntersect >= cell.x and xIntersect <= cell.x + cell.width then
+                                        minT = t
+                                        hitVertical = false
+                                    end
+                                end
+                                
+                                t = (cell.y + cell.height - prevY) / ray.vector.y
+                                if t > 0 and t < minT then
+                                    local xIntersect = prevX + ray.vector.x * t
+                                    if xIntersect >= cell.x and xIntersect <= cell.x + cell.width then
+                                        minT = t
+                                        hitVertical = false
+                                    end
+                                end
+                            end
+                            
+                            if minT == math.huge then
+                                hitVertical = math.abs(ray.vector.x) > math.abs(ray.vector.y)
+                            end
+                            
+                            ray.wallSide = hitVertical and 'vertical' or 'horizontal'
+                            
                             ray.endX, ray.endY = ray.x, ray.y 
                             ray.collided = true
                             dx = ray.endX - ray.startX

@@ -7,15 +7,14 @@ function Raycaster:new(player, ray)
 
         rays = {},
 
-        numRays = 100,
-        fov = math.pi / 2,
+        numRays = 200,
+        fov = math.pi / 3,
         raySpeed = 2,
 
-        pixelPerX = 20,
-        cubesize = 40,
+        cubesize = 50,
         rectwidth = 10,
         rectheight = nil,
-        window_height = love.graphics.getHeight(),
+        pixelPerX = window_width / 200,
 
         all = {
             speed = 100
@@ -39,14 +38,15 @@ function Raycaster:castRays(dt)
         local raySin = math.sin(rayAngle)
         
         local ray = self.Ray:cast({
-            maze = self.player.maze,
+            player = self.player,
 
             x = self.player.x + self.player.width / 2, 
             y = self.player.y + self.player.height / 2,
 
             speed = self.raySpeed,
             cos = rayCos, 
-            sin = raySin
+            sin = raySin,
+            angle = rayAngle
         }, dt)
 
         table.insert(self.rays, ray)
@@ -71,31 +71,28 @@ function Raycaster:draw()
     elseif love.keyboard.isDown('down') then
         rectOffsetMod = rectOffsetMod - self.player.rotationSpeed * 30
     end
+    
+    local rect_texture = {white}
+    
     for index_ray, ray in ipairs(self.rays) do
         --ray:draw()
 
-        self.rectheight = (self.cubesize * self.window_height) / ray.distance
-        local rectOffset = (self.window_height / 2 - (self.rectheight / 2)) + rectOffsetMod
-        local rect_texture = {
-            white
-        }
-        local shade = (self.rectheight / 255) -- rgb val
-        local textureHeight = self.rectheight / #rect_texture
+        local angleDiff = ray.angle - self.player.rotation
+        angleDiff = ((angleDiff + math.pi) % (2 * math.pi)) - math.pi
+        local perpDistance = ray.distance * math.cos(angleDiff)
+        if perpDistance < 0.1 then perpDistance = 0.1 end
         
-        for height = 1, self.rectheight do
-            local textureIndex = math.floor((height - 1) / textureHeight) + 1
-            textureIndex = ((textureIndex - 1) % #rect_texture) + 1
-            
-            local texture = rect_texture[textureIndex]
-            local pixelR = shade * texture.r
-            local pixelG = shade * texture.g
-            local pixelB = shade * texture.b
-            love.graphics.setColor(pixelR, pixelG, pixelB)
-            
-            love.graphics.rectangle('fill', self.pixelPerX * index_ray, rectOffset + height - 1, self.pixelPerX, 1)
-        end
-        love.graphics.setColor(1, 1, 1)
+        self.rectheight = (self.cubesize * window_height) / perpDistance
+        local rectOffset = (window_height / 2 - (self.rectheight / 2)) + rectOffsetMod
+        
+        -- Optimize: draw entire rectangle at once instead of pixel by pixel
+        local shade = math.min(self.rectheight / 255, 1.0) -- rgb val, clamped to 1.0
+        
+        -- Use a single rectangle draw call instead of per-pixel
+        love.graphics.setColor(shade, shade, shade)
+        love.graphics.rectangle('fill', self.pixelPerX * (index_ray - 1), rectOffset, self.pixelPerX, self.rectheight)
     end
+    love.graphics.setColor(1, 1, 1)
 end
 
 return Raycaster
